@@ -9,7 +9,7 @@
     <base-progress v-else :max="1" :value="0" id="total">
       {{ t('layout.footer.progress.ready', progress.ready) }}
     </base-progress>
-    <div class="w-full flex max-w-4xl self-center justify-center">
+    <div class="w-full min-w-0 flex flex-wrap items-center justify-center gap-y-2 max-w-4xl self-center md:flex-nowrap md:gap-y-0">
       <div class="join divide-x-2">
         <base-button class="join-item" :to="{ name: 'location' }" :tooltip="t('layout.footer.nav.downloadLocation')">
           <span class="sr-only">{{ t('layout.footer.nav.downloadLocation') }}</span>
@@ -48,16 +48,16 @@
           </template>
         </base-toggle-button>
       </div>
-      <div class="divider divider-horizontal mx-2"></div>
+      <div class="divider divider-horizontal mx-2 hidden md:flex"></div>
       <media-download-options
           v-model="selectedOptions"
           :formats="groupStore.getAllFormats()"
           :auto-select="false"
           locale-key="layout.footer.format"
-          class="w-fit grow"
+          class="w-full min-w-0 md:w-fit md:grow"
           join
       />
-      <div class="divider divider-horizontal mx-2"></div>
+      <div class="divider divider-horizontal mx-2 hidden md:flex"></div>
       <base-button-dropdown
           placement="top"
           align="end"
