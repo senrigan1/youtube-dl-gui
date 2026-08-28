@@ -1,6 +1,6 @@
 <template>
-  <article class="card card-side w-full max-w-175 h-48 bg-base-300 p-4 shadow-md" :class="[statusOutline]">
-    <figure class="shrink-0 w-64 aspect-video rounded-md overflow-hidden bg-base-100">
+  <article class="card w-full max-w-175 h-auto bg-base-300 p-2 sm:p-3 md:card-side md:h-48 md:p-4 shadow-md" :class="[statusOutline]">
+    <figure class="w-full max-w-96 self-center aspect-video rounded-md overflow-hidden bg-base-100 md:shrink-0 md:w-64 md:max-w-none md:self-auto">
       <img
           :src="group.thumbnail ?? placeholderUrl"
           :alt="t('media.view.thumbnailAlt', { title: group.title ?? '' })"
@@ -12,8 +12,9 @@
         :is="activeStep"
         v-if="activeStep"
         v-bind="activeStepProps"
+        class="w-full min-w-0"
     />
-    <div class="divider divider-horizontal"></div>
+    <div class="divider divider-vertical md:divider-horizontal"></div>
     <media-card-actions
         @download="downloadGroup"
         @retry="retryGroup"

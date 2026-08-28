@@ -16,7 +16,7 @@
         "create": false,
         "title": "Open Video Downloader",
         "width": 800,
-        "minWidth": 750,
+        "minWidth": 650,
         "height": 900,
         "minHeight": 650,
         "visible": false,

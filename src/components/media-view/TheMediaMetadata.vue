@@ -1,5 +1,5 @@
 <template>
-  <section class="flex flex-row gap-6 py-4 px-8">
+  <section class="flex flex-col gap-6 py-4 px-8 md:flex-row">
     <figure class="flex-grow-0 flex-shrink-1 aspect-video w-full max-w-100">
       <img
         :src="group?.thumbnail ?? placeholderUrl"

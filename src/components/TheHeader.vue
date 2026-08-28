@@ -1,5 +1,5 @@
 <template>
-  <header class="relative z-20 p-4 bg-base-300 flex gap-4 justify-center w-full shadow-lg">
+  <header class="relative z-20 p-2 sm:p-3 md:p-4 bg-base-300 flex gap-2 sm:gap-3 md:gap-4 justify-center w-full shadow-lg">
     <input
         ref="fileInput"
         type="file"
@@ -7,12 +7,12 @@
         class="hidden"
         @change="handleFileSelection"
     />
-    <form @submit.prevent="handleSubmit" class="join w-full max-w-155 grow" autocomplete="off">
+    <form @submit.prevent="handleSubmit" class="join w-full min-w-0 max-w-155 grow" autocomplete="off">
       <input
           v-model="url"
           id="queue-url-input"
           name="URL input to queue a video or playlist"
-          class="input join-item w-full"
+          class="input join-item w-full min-w-0"
           :placeholder="inputPlaceholder"
           type="text"
           inputmode="url"
@@ -69,7 +69,7 @@
         </li>
       </base-button-dropdown>
     </form>
-    <router-link class="btn btn-subtle" :title="t('layout.header.nav.settings')" :to="{ name: 'settings.downloads' }">
+    <router-link class="btn btn-subtle btn-sm self-center md:btn-md" :title="t('layout.header.nav.settings')" :to="{ name: 'settings.downloads' }">
       <span class="sr-only">{{ t('layout.header.nav.settings') }}</span>
       <cog8-tooth-icon class="w-6 h-6"/>
     </router-link>

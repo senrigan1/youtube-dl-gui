@@ -1,14 +1,14 @@
 <template>
   <div
-    class="card-body py-0 pr-0 grow w-full min-w-0 grid grid-cols-2"
-    :class="showExpandedOptions ? 'auto-rows-min' : 'grid-rows-[1fr_1fr_1fr]'"
+    class="card-body p-0 grow w-full min-w-0 grid grid-cols-1 gap-3 md:py-0 md:pr-0 md:pl-6 md:grid-cols-2 md:gap-2"
+    :class="showExpandedOptions ? 'md:auto-rows-min' : 'md:grid-rows-[1fr_1fr_1fr]'"
   >
-    <h2 :title="group.title ?? group.url" class="card-title block leading-8 overflow-hidden text-nowrap text-ellipsis text-base row-auto col-span-2">{{ group.title ?? group.url }}</h2>
+    <h2 :title="group.title ?? group.url" class="card-title block leading-8 overflow-hidden text-nowrap text-ellipsis text-base row-auto col-span-1 md:col-span-2">{{ group.title ?? group.url }}</h2>
     <media-download-options
         :formats="group.formats"
         :default-value="optionsStore.getGlobalOptions()"
         v-model="selectedOptions"
-        class="flex gap-4 w-full col-start-1 col-end-3"
+        class="flex flex-col gap-3 w-full col-span-1 [&>select]:w-full md:flex-row md:gap-4 md:col-start-1 md:col-end-3 md:[&>select]:w-auto"
         approximate
     />
     <media-encoding-options
@@ -18,7 +18,7 @@
         :audio-options="audioCodecOptions"
         :video-options="videoCodecOptions"
         :track-type="selectedTrackType"
-        class="flex gap-4 w-full col-start-1 col-end-3"
+        class="flex flex-col gap-3 w-full col-span-1 [&>select]:w-full md:flex-row md:gap-4 md:col-start-1 md:col-end-3 md:[&>select]:w-auto"
     />
     <media-track-options
         v-if="expandedOptionsType === 'tracks'"
@@ -27,7 +27,7 @@
         :audio-options="audioTrackOptions"
         :video-options="videoTrackOptions"
         :track-type="selectedTrackType"
-        class="flex gap-4 w-full col-start-1 col-end-3"
+        class="flex flex-col gap-3 w-full col-span-1 [&>select]:w-full md:flex-row md:gap-4 md:col-start-1 md:col-end-3 md:[&>select]:w-auto"
     />
     <p class="flex items-center">
       {{ t('media.steps.configure.metadata.duration', { duration: useDuration(group).value }) }}
