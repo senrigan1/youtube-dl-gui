@@ -37,14 +37,9 @@
           align="end"
           menuWidthClass="w-64"
           flushLeft
-          :main-disabled="isInputDisabled"
+          hideMain
           :caretAriaLabel="t('layout.header.actions.more')"
-          @mainClick="handleAddClick"
       >
-        <template #main>
-          {{ t('common.add') }}
-        </template>
-
         <li>
           <button
               class="gap-2 text-nowrap"
@@ -150,10 +145,6 @@ const inputPlaceholder = computed(() => {
 });
 
 const clipboardHasValidUrl = computed(() => isValidUrl(clipboardContent));
-
-const isInputDisabled = computed(() => {
-  return isAdding.value || (url.value.length === 0 && !clipboardHasValidUrl.value);
-});
 
 const url = ref('');
 
@@ -289,10 +280,6 @@ async function processParsedUrls(
 
 function handleSubmit() {
   void addFromInput();
-}
-
-function handleAddClick(event: MouseEvent) {
-  void addFromInput(event.shiftKey);
 }
 
 function handleImportClick(event: MouseEvent) {
