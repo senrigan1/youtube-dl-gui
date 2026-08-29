@@ -22,6 +22,14 @@
           spellcheck="false"
           ref="input"
       />
+      <button
+          type="button"
+          class="btn btn-secondary join-item"
+          title="Paste clipboard URL and add it to the queue"
+          @click="handlePasteAndAdd"
+      >
+        Paste
+      </button>
       <base-button-dropdown
           btnClass="btn-primary"
           placement="bottom"
@@ -86,6 +94,7 @@ import {
   FunnelIcon,
 } from '@heroicons/vue/24/outline';
 import { FunnelIcon as FunnelIconSolid } from '@heroicons/vue/24/solid';
+import { readText } from '@tauri-apps/plugin-clipboard-manager';
 import { useMediaStore } from '../stores/media/media';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useClipboard } from '../composables/useClipboard';
@@ -159,6 +168,17 @@ function addFromInput(immediateDownload: boolean = false) {
   void processParsedUrls(parseUrlInputText(urlToSubmit), immediateDownload, true);
   void router.push('/');
   url.value = '';
+}
+
+async function handlePasteAndAdd() {
+  try {
+    const clipboardText = (await readText()).trim();
+    if (!clipboardText) return;
+    url.value = clipboardText;
+    addFromInput();
+  } catch (e) {
+    console.error('Failed to read clipboard:', e);
+  }
 }
 
 async function processParsedUrls(
