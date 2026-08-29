@@ -1,6 +1,7 @@
 <template>
   <div class="join relative z-0 divide-x-2 focus-within:z-30">
     <base-button
+        v-if="!hideMain"
         class="join-item !rounded-r-none"
         :class="mainButtonClasses"
         :tooltip="mainTooltip"
@@ -14,7 +15,7 @@
 
     <div class="dropdown relative" :class="dropdownClasses">
       <button
-          class="btn btn-subtle join-item px-1 !rounded-l-none"
+          class="btn btn-subtle join-item px-1"
           :class="caretButtonClasses"
           type="button"
           tabindex="0"
@@ -61,6 +62,7 @@ const props = withDefaults(
     mainType?: string;
     mainLoading?: boolean;
     mainDisabled?: boolean;
+    hideMain?: boolean;
     flushLeft?: boolean;
     caretAriaLabel?: string;
     closeOnItemClick?: boolean;
@@ -76,6 +78,7 @@ const props = withDefaults(
     mainTooltip: '',
     mainLoading: false,
     mainDisabled: false,
+    hideMain: false,
     flushLeft: false,
     caretAriaLabel: '',
     closeOnItemClick: true,
@@ -97,15 +100,26 @@ const mainButtonClasses = computed(() => [
 ]);
 
 const caretButtonClasses = computed(() => {
+  const classes = [];
+
+  if (props.hideMain || props.flushLeft) {
+    classes.push('!rounded-l-none !border-l-0');
+  } else {
+    classes.push('!rounded-l-none');
+  }
+
   if (props.disabled || props.caretDisabled) {
-    return [props.btnClass];
+    classes.push(props.btnClass);
+    return classes;
   }
 
-  if (props.mainDisabled) {
-    return ['btn-soft'];
+  if (props.mainDisabled && !props.hideMain) {
+    classes.push('btn-soft');
+    return classes;
   }
 
-  return [props.btnClass];
+  classes.push(props.btnClass);
+  return classes;
 });
 
 const menuClasses = computed(() => [
