@@ -26,9 +26,10 @@
           type="button"
           class="btn btn-secondary join-item"
           title="Paste clipboard URL and add it to the queue"
+          :disabled="isAdding"
           @click="handlePasteAndAdd"
       >
-        Paste
+        {{ isAdding ? 'Adding…' : 'Paste' }}
       </button>
       <base-button-dropdown
           btnClass="btn-primary"
@@ -96,6 +97,7 @@ import {
 import { FunnelIcon as FunnelIconSolid } from '@heroicons/vue/24/solid';
 import { readText } from '@tauri-apps/plugin-clipboard-manager';
 import { useMediaStore } from '../stores/media/media';
+import { useMediaGroupStore } from '../stores/media/group';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useClipboard } from '../composables/useClipboard';
 import { useRouter } from 'vue-router';
@@ -117,6 +119,7 @@ import { isInputFiltersActive } from '../helpers/inputFilters.ts';
 const { t } = useI18n();
 const router = useRouter();
 const mediaStore = useMediaStore();
+const mediaGroupStore = useMediaGroupStore();
 const toastStore = useToastStore();
 
 const settingsStore = useSettingsStore();
@@ -132,6 +135,7 @@ const { content: clipboardContent, poll } = useClipboard({
 const input = ref<HTMLInputElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const fileImportImmediateDownload = ref(false);
+const isAdding = ref(false);
 
 const inputPlaceholder = computed(() => {
   if (watchClipboardStore.isActive) {
@@ -148,10 +152,66 @@ const inputPlaceholder = computed(() => {
 const clipboardHasValidUrl = computed(() => isValidUrl(clipboardContent));
 
 const isInputDisabled = computed(() => {
-  return url.value.length === 0 && !clipboardHasValidUrl.value;
+  return isAdding.value || (url.value.length === 0 && !clipboardHasValidUrl.value);
 });
 
 const url = ref('');
+
+function queueUrlKey(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  try {
+    const parsed = new URL(trimmed);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    const isYouTubeHost = host === 'youtube.com'
+      || host.endsWith('.youtube.com')
+      || host === 'youtube-nocookie.com'
+      || host.endsWith('.youtube-nocookie.com')
+      || host === 'youtu.be';
+
+    if (isYouTubeHost) {
+      const playlistId = parsed.searchParams.get('list');
+      if (playlistId) return `youtube-playlist:${playlistId}`;
+
+      if (host === 'youtu.be') {
+        const videoId = parsed.pathname.split('/').filter(Boolean)[0];
+        if (videoId) return `youtube-video:${videoId}`;
+      }
+
+      const pathParts = parsed.pathname.split('/').filter(Boolean);
+      const videoId = parsed.pathname === '/watch'
+        ? parsed.searchParams.get('v')
+        : (['shorts', 'live', 'embed'].includes(pathParts[0]) ? pathParts[1] : null);
+      if (videoId) return `youtube-video:${videoId}`;
+    }
+
+    parsed.hash = '';
+    return parsed.toString();
+  } catch {
+    return trimmed;
+  }
+}
+
+function filterDuplicateUrls(urls: string[]) {
+  const existingKeys = new Set(
+    mediaGroupStore.orderedGroups
+      .map(group => queueUrlKey(group.url))
+      .filter(Boolean),
+  );
+  const batchKeys = new Set<string>();
+  let duplicates = 0;
+
+  const uniqueUrls = urls.filter((candidate) => {
+    const key = queueUrlKey(candidate);
+    if (existingKeys.has(key) || batchKeys.has(key)) {
+      duplicates++;
+      return false;
+    }
+    batchKeys.add(key);
+    return true;
+  });
+
+  return { uniqueUrls, duplicates };
+}
 
 async function addClipboardUrlToQueue(urlToRecord: string) {
   if (!watchClipboardStore.isActive || !isValidUrl(urlToRecord) || watchClipboardStore.hasSeen(urlToRecord)) {
@@ -159,25 +219,43 @@ async function addClipboardUrlToQueue(urlToRecord: string) {
   }
 
   watchClipboardStore.markSeen(urlToRecord);
-  await mediaStore.dispatchMediaInfoFetch(urlToRecord);
+  const { uniqueUrls, duplicates } = filterDuplicateUrls([urlToRecord]);
+  if (duplicates > 0) {
+    toastStore.showToast('Already in queue. Duplicate link skipped.', { style: 'info' });
+    return;
+  }
+  await mediaStore.addUrlBatch(uniqueUrls);
 }
 
-function addFromInput(immediateDownload: boolean = false) {
+async function addFromInput(immediateDownload: boolean = false) {
+  if (isAdding.value) return;
   const urlToSubmit = url.value.length > 0 ? url.value : clipboardContent.value;
   if (!urlToSubmit) return;
-  void processParsedUrls(parseUrlInputText(urlToSubmit), immediateDownload, true);
-  void router.push('/');
-  url.value = '';
+
+  isAdding.value = true;
+  try {
+    await processParsedUrls(parseUrlInputText(urlToSubmit), immediateDownload, true);
+    await router.push('/');
+    url.value = '';
+  } finally {
+    isAdding.value = false;
+  }
 }
 
 async function handlePasteAndAdd() {
+  if (isAdding.value) return;
+  isAdding.value = true;
   try {
     const clipboardText = (await readText()).trim();
     if (!clipboardText) return;
     url.value = clipboardText;
-    addFromInput();
+    await processParsedUrls(parseUrlInputText(clipboardText), false, true);
+    await router.push('/');
+    url.value = '';
   } catch (e) {
     console.error('Failed to read clipboard:', e);
+  } finally {
+    isAdding.value = false;
   }
 }
 
@@ -186,26 +264,35 @@ async function processParsedUrls(
   immediateDownload: boolean = false,
   fromInput: boolean = false,
 ) {
-  if (result.urls.length > 0) {
+  const { uniqueUrls, duplicates } = filterDuplicateUrls(result.urls);
+
+  if (duplicates > 0) {
+    const message = duplicates === 1
+      ? 'Already in queue. Duplicate link skipped.'
+      : `${duplicates} duplicate links were already in the queue and were skipped.`;
+    toastStore.showToast(message, { style: 'info' });
+  }
+
+  if (uniqueUrls.length > 0) {
     if (immediateDownload) {
-      await mediaStore.addUrlBatchAndDownload(result.urls, false, true);
+      await mediaStore.addUrlBatchAndDownload(uniqueUrls, false, true);
     } else {
-      await mediaStore.addUrlBatch(result.urls);
+      await mediaStore.addUrlBatch(uniqueUrls);
     }
   }
 
   if (!fromInput || result.urls.length > 1) {
-    const toast = getUrlImportToast(result);
+    const toast = getUrlImportToast({ urls: uniqueUrls, skipped: result.skipped });
     toastStore.showToast(toast.message, { style: toast.style });
   }
 }
 
 function handleSubmit() {
-  addFromInput();
+  void addFromInput();
 }
 
 function handleAddClick(event: MouseEvent) {
-  addFromInput(event.shiftKey);
+  void addFromInput(event.shiftKey);
 }
 
 function handleImportClick(event: MouseEvent) {
