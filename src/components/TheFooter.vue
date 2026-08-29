@@ -3,11 +3,11 @@
     <base-progress v-if="isDownloading" :max="progress.total" :value="progress.done" id="total">
       {{ t('layout.footer.progress.downloading', { done: progress.done, total: progress.total }) }}
     </base-progress>
-    <base-progress v-else-if="isCompleted" :max="progress.total" :value="progress.done" id="total">
-      {{ t('layout.footer.progress.completed', progress.total) }}
+    <base-progress v-else-if="isCompleted" :max="queueCount" :value="queueCount" id="total">
+      {{ t('layout.footer.progress.completed', queueCount) }}
     </base-progress>
-    <base-progress v-else :max="1" :value="0" id="total">
-      {{ t('layout.footer.progress.ready', progress.ready) }}
+    <base-progress v-else :max="Math.max(queueCount, 1)" :value="readyCount" id="total">
+      {{ queueStatusText }}
     </base-progress>
     <div class="w-full min-w-0 flex flex-wrap items-center justify-center gap-y-2 max-w-4xl self-center md:flex-nowrap md:gap-y-0">
       <div class="join divide-x-2">
@@ -186,12 +186,57 @@ const progress = computed(() => {
   return progressStore.findAllProgress();
 });
 
+const queueCount = computed(() => groupStore.countGroups());
+const groupStates = computed(() => groupStore.groupOrder.map(groupId => mediaStateStore.getGroupState(groupId)));
+const countState = (...states: MediaState[]) => groupStates.value.filter(state => state !== undefined && states.includes(state)).length;
+
+const preparingCount = computed(() => countState(
+  MediaState.fetching,
+  MediaState.fetchingList,
+  MediaState.playlistSelection,
+));
+const readyCount = computed(() => countState(MediaState.configure));
+const failedCount = computed(() => countState(MediaState.error));
+const pausedCount = computed(() => countState(MediaState.paused, MediaState.pausedList));
+const completedCount = computed(() => countState(MediaState.done));
+
 const isDownloading = computed(() => {
   return (progress.value.downloading ?? 0) > 0;
 });
 
 const isCompleted = computed(() => {
-  return (progress.value.downloading ?? 0) === 0 && (progress.value.ready ?? 0) === 0 && (progress.value.done ?? 0) > 0;
+  return queueCount.value > 0 && completedCount.value === queueCount.value;
+});
+
+const itemWord = (count: number) => count === 1 ? 'item' : 'items';
+
+const queueStatusText = computed(() => {
+  const total = queueCount.value;
+  if (total === 0) {
+    return 'Ready to download! 0 items queued.';
+  }
+
+  if (preparingCount.value > 0) {
+    if (readyCount.value > 0) {
+      return `Preparing ${preparingCount.value} ${itemWord(preparingCount.value)}... ${readyCount.value} of ${total} ready.`;
+    }
+    return `Preparing ${preparingCount.value} ${itemWord(preparingCount.value)}...`;
+  }
+
+  if (failedCount.value > 0 && readyCount.value === 0 && pausedCount.value === 0) {
+    return `${failedCount.value} ${itemWord(failedCount.value)} failed.`;
+  }
+
+  if (pausedCount.value > 0 && readyCount.value === 0) {
+    return `${pausedCount.value} ${itemWord(pausedCount.value)} paused.`;
+  }
+
+  if (readyCount.value > 0) {
+    const suffix = failedCount.value > 0 ? ` ${failedCount.value} failed.` : '';
+    return `Ready to download! ${readyCount.value} of ${total} ${itemWord(total)} ready.${suffix}`;
+  }
+
+  return `${total} ${itemWord(total)} in queue.`;
 });
 
 const selectedOptions = ref<DownloadOptions | undefined>(optionsStore.getGlobalOptions());
